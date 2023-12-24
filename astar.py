@@ -57,7 +57,7 @@ class Node:
     
     # these methods will change the state of the node
     def reset(self):
-        self.color == WHITE
+        self.color = WHITE
 
     def make_closed(self):
         self.color = RED
@@ -82,7 +82,20 @@ class Node:
         pygame.draw.rect(win, self.color, (self.x, self.y, self.width, self.width))
 
     def update_neighbors(self, grid):
-        pass
+        # we check up, left, down, right to see if they are barriers
+        # if they are not barriers, if not then we add them to a list of neighbors
+        self.neighbors = []
+        if self.row < self.total_rows - 1 and not grid[self.row + 1][self.col].is_barrier(): # going DOWN
+            self.neighboars.append(grid[self.row + 1][self.col])
+
+        if self.row > 0 and not grid[self.row - 1][self.col].is_barrier(): # going UP
+            self.neighboars.append(grid[self.row - 1][self.col])
+
+        if self.col < self.total_rows - 1 and not grid[self.row][self.col + 1].is_barrier(): # going RIGHT
+            self.neighboars.append(grid[self.row][self.col + 1])
+
+        if self.col > 0 and not grid[self.row][self.col - 1].is_barrier(): # going LEFT
+            self.neighboars.append(grid[self.row][self.col - 1])
 
     def __lt__(self, other):
         return False
@@ -95,6 +108,9 @@ def h(p1, p2):
     x1, y1 = p1 # for example, p1 = (2, 3)
     x2, y2 = p2
     return abs(x1 - x2) + abs(y1 - y2) #
+
+def algorithm(draw, grid, start, end): # our algorithm function
+    pass
 
 # now a function to build the grid
 def make_grid(rows, width):
@@ -169,9 +185,26 @@ def main(win, width):
 
                 elif node != end and node != start:
                     node.make_barrier()
+            elif pygame.mouse.get_pressed()[2]:
+                pos = pygame.mouse.get_pos()
+                row, col = get_clicked_pos(pos, ROWS, width)
+                node = grid[row][col]
+                node.reset()
+                if node == start:
+                    start = None
 
-            elif pygame.mouse.get_pressed()[2]: # if mouse was right clicked
-                pass
+                if node == end:
+                    end = Node
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE and not started:
+                    # here we start running the algorithm
+                    for row in grid:
+                        for node in row:
+                            node.update_neighbors()
+
+                    algorithm(lambda: draw(win, grid, ROWS, width), grid, start, end)
+        
     pygame.quit()
 
 main(WIN, WIDTH)
