@@ -86,16 +86,16 @@ class Node:
         # if they are not barriers, if not then we add them to a list of neighbors
         self.neighbors = []
         if self.row < self.total_rows - 1 and not grid[self.row + 1][self.col].is_barrier(): # going DOWN
-            self.neighboars.append(grid[self.row + 1][self.col])
+            self.neighbors.append(grid[self.row + 1][self.col])
 
         if self.row > 0 and not grid[self.row - 1][self.col].is_barrier(): # going UP
-            self.neighboars.append(grid[self.row - 1][self.col])
+            self.neighbors.append(grid[self.row - 1][self.col])
 
         if self.col < self.total_rows - 1 and not grid[self.row][self.col + 1].is_barrier(): # going RIGHT
-            self.neighboars.append(grid[self.row][self.col + 1])
+            self.neighbors.append(grid[self.row][self.col + 1])
 
         if self.col > 0 and not grid[self.row][self.col - 1].is_barrier(): # going LEFT
-            self.neighboars.append(grid[self.row][self.col - 1])
+            self.neighbors.append(grid[self.row][self.col - 1])
 
     def __lt__(self, other):
         return False
@@ -107,10 +107,63 @@ We will use Manhattan distance to determing the distance b/w these points
 def h(p1, p2):
     x1, y1 = p1 # for example, p1 = (2, 3)
     x2, y2 = p2
-    return abs(x1 - x2) + abs(y1 - y2) #
+    return abs(x1 - x2) + abs(y1 - y2) 
+
+def reconstruct_path(came_from, current, draw):
+    while current in came_from:
+        current = came_from[current]
+        current.make_path()
+        draw()
 
 def algorithm(draw, grid, start, end): # our algorithm function
-    pass
+    count = 0 # used to keep track of when we inserted the items into the queue
+    open_set = PriorityQueue() # the best data structure to give us the minimum element from the queue
+    open_set.put((0, count, start)) # here we push (fscore, count, the node)
+    came_from = {} # a dictionary of nodes in the algorithm from where the current node came from
+    g_score = {node: float("inf") for row in grid for node in row} # a table of all g scores
+    g_score[start] = 0 # g score of starting node
+    f_score = {node: float("inf") for row in grid for node in row} # a table of all g scores
+    f_score[start] = h(start.get_pos(), end.get_pos()) # f score if the heuristic because we estimate how far is the end node from the start node
+
+    open_set_hash = {start} # helps us check whats in the priority queue has
+
+    while not open_set.empty(): # the algorithm runs while the open_set is not empty
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit() # a way to exit the algorithm
+
+        current = open_set.get()[2] # we just want the node
+
+        open_set_hash.remove(current) 
+
+        if current == end:
+            reconstruct_path(came_from, end, draw)
+            end.make_end()
+            return True
+        
+        # now we consider all of the neighbors for the current node
+        for neighbor in current.neighbors:
+            temp_g_score = g_score[current] + 1 # assume all edges are 1, find temp_g_score by taking distance of current and add one, which is one more node over
+
+            # now if g_score is less than the actual value, update value
+            if temp_g_score < g_score[neighbor]:
+                came_from[neighbor] = current
+                g_score[neighbor] = temp_g_score
+                f_score[neighbor] = temp_g_score + h(neighbor.get_pos(), end.get_pos())
+                if neighbor not in open_set_hash:
+                    count += 1
+                    open_set.put((f_score[neighbor], count, neighbor))
+                    open_set_hash.add(neighbor)
+                    neighbor.make_open()
+
+        draw()
+
+        if current != start:
+            current.make_closed()
+
+    return False
+
+
 
 # now a function to build the grid
 def make_grid(rows, width):
@@ -162,14 +215,9 @@ def main(win, width):
 
     while run:
         draw(win, grid, ROWS, width)
-        print("test")
         for event in pygame.event.get(): # looping through each event and checking them
             if event.type == pygame.QUIT: # is we click the x button on the window
                 run = False
-
-            # this if statement prevents any interference while the algorithm is running
-            if started:
-                continue
 
             if pygame.mouse.get_pressed()[0]: # if mouse was left clicked
                 pos = pygame.mouse.get_pos()
@@ -197,13 +245,18 @@ def main(win, width):
                     end = Node
 
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE and not started:
+                if event.key == pygame.K_SPACE and start and end:
                     # here we start running the algorithm
                     for row in grid:
                         for node in row:
-                            node.update_neighbors()
+                            node.update_neighbors(grid)
 
                     algorithm(lambda: draw(win, grid, ROWS, width), grid, start, end)
+
+                if event.key == pygame.K_c:
+                    start = None
+                    end = None
+                    grid = make_grid(ROWS, width)
         
     pygame.quit()
 
